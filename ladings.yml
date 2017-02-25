@@ -14,7 +14,9 @@ concourse-db:
     POSTGRES_DB:       (( grab meta.pg.db   ))
     POSTGRES_USER:     (( grab meta.pg.user ))
     POSTGRES_PASSWORD: (( grab meta.pg.pass ))
-    PGDATA:            (( grab $PGDATA ))
+    PGDATA:            /db
+  volumes:
+    - (( concat $PGDATA ":/db" ))
 
 concourse-web:
   image: concourse/concourse
