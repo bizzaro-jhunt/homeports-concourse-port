@@ -1,0 +1,41 @@
+meta:
+  pg:
+    db: ci
+    user: (( vault $VAULT "/db:user" ))
+    pass: (( vault $VAULT "/db:pass" ))
+  ui:
+    url:  (( grab $DOMAIN ))
+    user: (( vault $VAULT "/ui:user" ))
+    pass: (( vault $VAULT "/ui:pass" ))
+
+concourse-db:
+  image: postgres:9.5
+  environment:
+    POSTGRES_DB:       (( grab meta.pg.db   ))
+    POSTGRES_USER:     (( grab meta.pg.user ))
+    POSTGRES_PASSWORD: (( grab meta.pg.pass ))
+    PGDATA:            (( grab $PGDATA ))
+
+concourse-web:
+  image: concourse/concourse
+  links: [concourse-db]
+  command: web
+  ports:
+    - '8080:8080'
+  volumes:
+    - (( concat $DATA "/keys/web:/concourse-keys" ))
+  environment:
+    CONCOURSE_BASIC_AUTH_USERNAME:  (( grab meta.ui.user ))
+    CONCOURSE_BASIC_AUTH_PASSWORD:  (( grab meta.ui.pass ))
+    CONCOURSE_EXTERNAL_URL:         (( grab meta.ui.url  ))
+    CONCOURSE_POSTGRES_DATA_SOURCE: (( concat "postgres://" meta.pg.user ":" meta.pg.pass "@concourse-db:5432/" meta.pg.db "?sslmode=disable" ))
+
+concourse-worker:
+  image: concourse/concourse
+  privileged: true
+  links: [concourse-web]
+  command: worker
+  volumes:
+    - (( concat $DATA "/keys/worker:/concourse-keys" ))
+  environment:
+    CONCOURSE_TSA_HOST: concourse-web

@@ -1,0 +1,36 @@
+#!/bin/bash
+set -eu
+if [[ -z "${HOMEPORT_IS_RUNNING_THE_SHOW:-}" ]]; then
+  echo >&2 "this script should not be run directly; try \`homeports run concourse\` instead..."
+  exit 1
+fi
+
+if [[ -z "${DOMAIN:-}" ]]; then
+  ask_for "What domain would you like to run this Concourse on?"
+  DOMAIN=${HOMEPORT_INTERNAL_LAST_VALUE}
+fi
+
+need_data "keys/worker" >/dev/null
+need_data "keys/web" >/dev/null
+keysdir="$(need_data "keys")"
+for key in web/tsa_host worker/worker web/session_signing; do
+  if [[ ! -f "${keysdir}/${key}_key" ]]; then
+    ssh-keygen -t rsa -N '' -f "${keysdir}/${key}_key"
+  fi
+done
+cp "${keysdir}/worker/worker_key.pub" "${keysdir}/web/authorized_worker_keys"
+tree "${keysdir}"
+
+export DOMAIN
+export DATA="$(need_data)"
+export PGDATA="$(need_data "pg")"
+export VAULT="secret/homeports/concourse"
+
+safe target -i
+safe write  "${VAULT}/ui" user=ci \
+  -- gen 48 "${VAULT}/ui" pass \
+  \
+  -- gen 48 "${VAULT}/db" user \
+  -- gen 48 "${VAULT}/db" pass
+
+spruce merge --prune meta ladings.yml >&3
