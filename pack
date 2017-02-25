@@ -19,7 +19,7 @@ for key in web/tsa_host worker/worker web/session_signing; do
   fi
 done
 cp "${keysdir}/worker/worker_key.pub" "${keysdir}/web/authorized_worker_keys"
-tree "${keysdir}"
+cp ${keysdir}/web/tsa_host_key.pub ${keysdir}/worker
 
 export DOMAIN
 export DATA="$(need_data)"
